@@ -19,14 +19,19 @@ public class LobbyListUI : MonoBehaviour
 
     void Refresh(List<WSClient.LobbyInfo> list)
     {
-        // очистить старые
-        foreach (Transform child in content) Destroy(child.gameObject);
+        Debug.Log($"[LobbyListUI] Пришло {list.Count} лобби");
+        foreach (Transform c in content) Destroy(c.gameObject);
 
-        foreach (var lobby in list)
+        foreach (var l in list)
         {
+            Debug.Log($"[LobbyListUI] Создаю строку: {l.name} / {l.id}");
             var row = Instantiate(rowPrefab, content);
-            row.GetComponentInChildren<TMP_Text>().text =
-                $"{lobby.name}  [{lobby.players}/2]";
+            var rb  = row.GetComponent<RowButton>();
+            if (rb == null) rb = row.AddComponent<RowButton>();
+            Debug.Log($"[LobbyListUI] Инициализация RowButton на {row.name}");
+
+            rb.Init(l.id, $"{l.name}  [{l.players}/2]");
         }
     }
+
 }
