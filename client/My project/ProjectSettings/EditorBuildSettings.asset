@@ -8,6 +8,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/NetworkTest.unity
     guid: e304d8458f6560f4188d8987bb0a45ca
+  - enabled: 1
+    path: Assets/Scenes/BattleScene.unity
+    guid: 94b9cee613792094cb0400f877d05a4d
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

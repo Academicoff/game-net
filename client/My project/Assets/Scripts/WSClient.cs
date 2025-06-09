@@ -13,7 +13,6 @@ public class WSClient : MonoBehaviour
 
     public static event Action<List<LobbyInfo>> OnLobbyList;
     public static event Action<int> OnCountdown;
-    public static event Action OnMatchStart;
 
     [Serializable]
     public class LobbyInfo
@@ -34,9 +33,9 @@ public class WSClient : MonoBehaviour
     {
         ws = new WebSocket("ws://localhost:8080/ws");
 
-        ws.OnOpen    += () => Debug.Log("WS ► open");
-        ws.OnError   += e  => Debug.LogError("WS error: " + e);
-        ws.OnClose   += e  => Debug.Log("WS ◄ closed: " + e);
+        ws.OnOpen += () => Debug.Log("WS ► open");
+        ws.OnError += e => Debug.LogError("WS error: " + e);
+        ws.OnClose += e => Debug.Log("WS ◄ closed: " + e);
         ws.OnMessage += HandleMessage;
 
         await ws.Connect();
@@ -79,15 +78,15 @@ public class WSClient : MonoBehaviour
                 break;
 
             case "MatchStart":
-                Debug.Log("▶ MatchStart получен");
-                OnMatchStart?.Invoke();
-
-                // Дополнительно: переход в боевую сцену
-                SceneManager.LoadScene("BattleScene"); // Назови сцену "BattleScene"
+                HandleMatchStart(msg["payload"]);
                 break;
 
             case "LobbyUpdate":
                 Debug.Log("▶ LobbyUpdate: " + msg["payload"]);
+                break;
+
+            case "HandSync":
+                HandleHandSync(msg["payload"]);
                 break;
 
             default:
@@ -112,4 +111,61 @@ public class WSClient : MonoBehaviour
         Debug.Log($"Получен LobbyList ({list.Count})");
         OnLobbyList?.Invoke(list);
     }
+
+    private void HandleMatchStart(JToken payload)
+    {
+        Debug.Log($"▶ MatchStart RAW: {payload}");
+
+        int youAre = payload?["youAre"]?.ToObject<int>() ?? 0;
+
+        // hand может быть, а может быть пустым массивом
+        var handArr = payload?["hand"]?.ToObject<List<string>>();
+        if (handArr == null)
+        {
+            Debug.LogWarning("⚠ MatchStart без поля hand (продолжаем без карт)");
+            handArr = new List<string>();          // создаём пустой, но НЕ прерываемся
+        }
+
+        MatchSpawner.YouAre = youAre;
+        MatchSpawner.HandData = handArr;
+
+        Debug.Log($"▶ YouAre: {youAre}, карт: {handArr.Count}");
+
+        // грузим сцену ВСЕГДА
+        SceneManager.sceneLoaded += OnBattleSceneLoaded;
+        SceneManager.LoadScene("BattleScene");
+    }
+
+    private void OnBattleSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name != "BattleScene") return;
+
+        Debug.Log("[WSClient] BattleScene загружена");
+
+        var spawner = FindObjectOfType<MatchSpawner>();
+        if (spawner != null)
+        {
+            spawner.OnMatchStart(); // Важно: метод должен быть public
+        }
+        else
+        {
+            Debug.LogError("[WSClient] MatchSpawner не найден на сцене!");
+        }
+
+        SceneManager.sceneLoaded -= OnBattleSceneLoaded;
+    }
+    
+    private void HandleHandSync(JToken payload)
+    {
+        var cards = payload?["hand"]?.ToObject<List<string>>();
+        if (cards == null) return;
+
+        MatchSpawner.HandData = cards;
+        Debug.Log($"▶ HandSync получен, карт: {cards.Count}");
+
+        var spawner = FindObjectOfType<MatchSpawner>();
+        if (spawner != null)
+            spawner.RefreshHand();          // метод, который очищает и заново кладёт карты
+    }
+
 }
